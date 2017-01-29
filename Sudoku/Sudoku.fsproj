@@ -24,7 +24,8 @@
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Debug\Sudoku.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
+    <Prefer32Bit>false</Prefer32Bit>
+    <StartArguments>4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -48,7 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Sudoku.fs" />
+    <Compile Include="SudokuSolver.fs" />
     <None Include="App.config" />
   </ItemGroup>
   <PropertyGroup>

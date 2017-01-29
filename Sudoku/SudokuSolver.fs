@@ -42,6 +42,7 @@ let display (values : IDictionary<(char * char), char list>) : Option<IDictionar
     for ch in rows do
         printfn "%s" (String.concat "" [for d in digits -> center pvalues.[ch, d] width + (if d |> isIn ['3'; '6'] then "|" else "")]) 
         if ch |> isIn ['C'; 'F'] then printfn "%s" line
+    printfn "%s" ""
     Some values
 
 let grid_values (grid : string) : Option<IDictionary<(char * char), char list>> =
@@ -51,60 +52,23 @@ let grid_values (grid : string) : Option<IDictionary<(char * char), char list>> 
     dict [for z in List.zip squares chars -> z] |> display
 
 
-//type MaybeBuilder() =
-//    member this.Bind (m, f) = Option.bind f m
-//    member this.Return x = Some x
-//    member this.Combine m m' =
-//        match (m, m') with
-//            | None, Some _ -> m
-//            | Some _, None -> m'
-//            | Some _, Some _ -> m'
-//            | None, None -> m'
-//    member this.For (sequence : seq<_>, body : 'T -> unit option) : _ option =
-//        use enumerator = sequence.GetEnumerator ()
-//        let mutable foundNone = false
-//
-//        while enumerator.MoveNext () && not foundNone do
-//
-//            if Option.isNone (body enumerator.Current) then
-//
-//                foundNone <- true
-//
-//        // If we broke out of the loop early because the 'body' function
-//
-//        // return None for some element, return None (to propagate the failure).
-//
-//        // Otherwise, return the 'zero' value (representing a 'success' which carries no value).
-//
-//        if foundNone then None else Some ()
-//     
-////     member this.For (m , f) =  
-////        for x in m do
-////            f x |> ignore
-////        Some
-//        
-//    member this.Zero() = None
-//    member this.YieldFrom m = m
-//    member this.Yield m = [m]
-//  
-//let maybe = new MaybeBuilder()
-
 let rec assign (values : IDictionary<(char * char), char list>) (s : char * char) (d : char) : Option<IDictionary<(char * char), char list>> =
     
     let rec eliminate (values : IDictionary<(char * char), char list>) (s : char * char) (d : char) : Option<IDictionary<(char * char), char list>> =
     
         let rule1  (values : IDictionary<(char * char), char list>) : Option<IDictionary<(char * char), char list>> =
         //  (1) If a square s is reduced to one value d', then eliminate d' from the peers.
-            values.[s] <- values.[s] |> List.filter (fun d' -> d' <> d)
             match List.length values.[s] with
                 | 0 -> None         // Contradiction: removed last value
-                | 1 -> [for s' in peers.[s] do for d' in values.[s] -> eliminate values s' d'] |> combine
+                | 1 -> 
+                    let d' = values.[s].[0]
+                    [for s' in peers.[s] -> eliminate values s' d'] |> combine
                 | _ -> Some values
 
         let rule2 (values : IDictionary<(char * char), char list>) : Option<IDictionary<(char * char), char list>> =
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
             [for u in units.[s] ->
-                let dplaces = [for s' in u do if d |> isIn values.[s] then yield s']  
+                let dplaces = [for s' in u do if d |> isIn values.[s'] then yield s']  
                 match List.length dplaces with
                     | 0 -> None  // Contradiction: no place for this value
                     | 1 -> assign values dplaces.[0] d
@@ -114,14 +78,17 @@ let rec assign (values : IDictionary<(char * char), char list>) (s : char * char
     (*  Eliminate d from values[s]; propagate when values or places <= 2.
         Return Some values, except return None if a contradiction is detected. *)        
         if not (d |> isIn values.[s]) then 
-            None        // Already eliminated
+            Some values        // Already eliminated
         else
+            values.[s] <- values.[s] |> List.filter (fun d' -> d' <> d)
             values |> rule1 >>= rule2
 
 (*  Assign a value d by eliminating all the other values (except d) from values[s] and propagate.  
     Return Some values, except return None if a contradiction is detected. *)   
     let other_values = values.[s] |> List.filter (fun d' -> d' <> d) 
-    [for d' in other_values -> eliminate values s d'] |> combine
+    match List.length other_values with
+        | 0 -> Some values      // Already assigned
+        | _ -> [for d' in other_values -> eliminate values s d'] |> combine
 
 
 let parse_grid (grid : string) : Option<IDictionary<(char * char), char list>> =
@@ -129,7 +96,7 @@ let parse_grid (grid : string) : Option<IDictionary<(char * char), char list>> =
     return None if a contradiction is detected. *)
     let values = new Dictionary<(char * char), char list>()    // mutable dictionary
     seq {for s in squares do yield s, digits} |> Seq.iter values.Add
-    
+   
     let assignGrid (gvalues : IDictionary<(char * char), char list>)  =
         [for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign values s d] |> combine
 
@@ -145,7 +112,8 @@ let solve (grid : string) : Option<IDictionary<(char * char), char list>> =
 [<EntryPoint>]
 let main argv = 
     printfn "%A" argv
-    argv.[1] |> solve >>= display |> ignore
+    assert (Array.length argv = 1)
+    argv.[0] |> solve >>= display |> ignore
 
     0 // retourne du code de sortie entier
 
