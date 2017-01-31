@@ -5,14 +5,16 @@ let center (s : string) (w : int) =
     let len = s.Length
     if w > len then s.PadLeft(((w - len) / 2) + len).PadRight(w) else s
 
-let combine m = 
-    m |> List.reduce (fun m m' ->
-        match (m, m') with
-            | None, Some _ -> m
-            | Some _, None -> m'
-            | Some _, Some _ -> m'
-            | None, None -> m'
-        )
+let until (g : Option<'a> -> bool) (s : seq<Option<'a>>) : Option<'a> =
+    use enumerator = s.GetEnumerator ()
+    let mutable found = false
+    let mutable result = None
+
+    while enumerator.MoveNext () && not found do
+        result <- enumerator.Current
+        if g result then
+            found <- true
+    result
 
 let (>>=) m f = Option.bind f m
 
@@ -62,18 +64,18 @@ let rec assign (values : IDictionary<(char * char), char list>) (s : char * char
                 | 0 -> None         // Contradiction: removed last value
                 | 1 -> 
                     let d' = values.[s].[0]
-                    [for s' in peers.[s] -> eliminate values s' d'] |> combine
+                    seq {for s' in peers.[s] -> eliminate values s' d'} |> until Option.isNone
                 | _ -> Some values
 
         let rule2 (values : IDictionary<(char * char), char list>) : Option<IDictionary<(char * char), char list>> =
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
-            [for u in units.[s] ->
-                let dplaces = [for s' in u do if d |> isIn values.[s'] then yield s']  
-                match List.length dplaces with
-                    | 0 -> None  // Contradiction: no place for this value
-                    | 1 -> assign values dplaces.[0] d
-                    | _ -> Some values
-            ] |> combine
+            seq {for u in units.[s] ->
+                    let dplaces = [for s' in u do if d |> isIn values.[s'] then yield s']  
+                    match List.length dplaces with
+                        | 0 -> None  // Contradiction: no place for this value
+                        | 1 -> assign values dplaces.[0] d
+                        | _ -> Some values
+            } |> until Option.isNone
 
     (*  Eliminate d from values[s]; propagate when values or places <= 2.
         Return Some values, except return None if a contradiction is detected. *)        
@@ -88,7 +90,8 @@ let rec assign (values : IDictionary<(char * char), char list>) (s : char * char
     let other_values = values.[s] |> List.filter (fun d' -> d' <> d) 
     match List.length other_values with
         | 0 -> Some values      // Already assigned
-        | _ -> [for d' in other_values -> eliminate values s d'] |> combine
+        | _ -> seq {for d' in other_values -> eliminate values s d'} |> until Option.isNone
+        | _ -> Some values
 
 
 let parse_grid (grid : string) : Option<IDictionary<(char * char), char list>> =
@@ -96,13 +99,19 @@ let parse_grid (grid : string) : Option<IDictionary<(char * char), char list>> =
     return None if a contradiction is detected. *)
     let values = new Dictionary<(char * char), char list>()    // mutable dictionary
     seq {for s in squares do yield s, digits} |> Seq.iter values.Add
-   
+       
     let assignGrid (gvalues : IDictionary<(char * char), char list>)  =
-        [for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign values s d] |> combine
-
+        seq {for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign values s d} 
+        |> until Option.isNone
+                
     grid_values grid >>= assignGrid
 
 let search (values : IDictionary<(char * char), char list>) : Option<IDictionary<(char * char), char list>> =
+//  Using depth-first search and propagation, try all possible values.
+//    if seq {for s in squares -> List.length values.[s] = 1 } |> Seq.forall (fun b -> b) then
+//        Some values   //    Solved!
+//    else
+//        let _, s = seq {for s in squares do if List.length values.[s] > 1 then yield List.length values.[s], s} |> Seq.min
     Some values
 
 let solve (grid : string) : Option<IDictionary<(char * char), char list>> = 
