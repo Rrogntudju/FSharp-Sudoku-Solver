@@ -107,7 +107,6 @@ let parse_grid (grid : string) : Option<HashMap<(char * char), char list>> =
         let values = HashMap [for s in squares do yield s, digits]
         seq {for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign s d
         } |> runWithUntil (Some values) Option.isNone
-                
     grid_values grid >>= assignGrid
 
 let rec search (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
@@ -129,25 +128,31 @@ let solved (values : HashMap<(char * char), char list>) : Option<HashMap<(char *
         | true -> Some values
         | false -> None
 
-let solve_all (grids : seq<string>) (name) : unit =
+let solve_all (grids : seq<string>) (name) (showif : float Option) : unit =
 //  Attempt to solve a sequence of grids. Report results.
-    let time_solved grid =
+//  When showif is a number of seconds, display puzzles that take longer.
+    let time_solved grid showif =
         let timer = new System.Diagnostics.Stopwatch()
         timer.Start()
         let values = solve grid
         timer.Stop()
-        timer.Elapsed.TotalSeconds, values >>= solved
+        let t = timer.Elapsed.TotalSeconds
+        if showif |> Option.exists (fun showif -> t > showif) then
+            grid |> grid_values >>= display |> ignore
+            values >>= display |> ignore
+            printfn "(%.2f seconds)" t
+        t, values >>= solved
 
-    let times, results = [for grid in grids -> time_solved grid] |> List.unzip
+    let times, results = [for grid in grids -> time_solved grid showif] |> List.unzip
     let N = grids |> Seq.length
     if N > 1 then
-        printfn "Solved %d of %d %s puzzles (avg %.2f secs (%d Hz), max %.2f secs)." 
+        printfn "Solved %d of %d %s puzzles (avg %.2f secs (%.0f Hz), max %.2f secs)." 
                 (results |> List.countWith (fun o -> Option.isSome o)) N name ((times |> List.sum) / float N)
-                (N / int (times |> List.sum)) (times |> List.max)
+                (float N / (times |> List.sum)) (times |> List.max)
 [<EntryPoint>]
 let main argv = 
-    solve_all (File.ReadLines "top95.txt") "hard"
-    solve_all (File.ReadLines "hardest.txt") "hardest"
+    solve_all (File.ReadLines "top95.txt") "hard" (Some 0.5)
+    solve_all (File.ReadLines "hardest.txt") "hardest" None
 
     System.Console.Read() |> ignore
 

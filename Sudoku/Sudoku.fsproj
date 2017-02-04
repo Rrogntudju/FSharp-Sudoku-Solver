@@ -9,10 +9,11 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Sudoku</RootNamespace>
     <AssemblyName>Sudoku</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Sudoku</Name>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,7 +23,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DocumentationFile>bin\Debug\Sudoku.XML</DocumentationFile>
     <Prefer32Bit>false</Prefer32Bit>
     <StartArguments>4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......</StartArguments>
@@ -34,10 +35,11 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DocumentationFile>bin\Release\Sudoku.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>.....6....59.....82....8....45........3........6..3.54...325..6..................</StartArguments>
+    <Prefer32Bit>false</Prefer32Bit>
+    <StartArguments>
+    </StartArguments>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
