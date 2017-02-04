@@ -1,4 +1,6 @@
-﻿open System.Collections.Generic
+﻿// A translation of Peter Norvig’s Sudoku solver from Python to F#     http://www.norvig.com/sudoku.html
+open System.Collections.Generic
+open System.IO
 
 let isIn (l : 'a list) (i : 'a) = List.contains i l
 let center (s : string) (w : int) =
@@ -14,11 +16,11 @@ let runWithUntil (v :  Option<'a>) (g : Option<'a> -> bool) (s : seq<'a -> Optio
     let mutable result = None
 
     while enumerator.MoveNext () && not found do
-        result <- values >>= enumerator.Current
-        if g result then
+        result <- values >>= enumerator.Current    // run the current function with values and return the result
+        if g result then        // run the guard function on the result
             found <- true
         if Option.isSome result then
-            values <- result
+            values <- result    // result becomes the next values if result is not None
     result
 
 let digits = "123456789" |> Seq.toList
@@ -53,8 +55,8 @@ let display (values : HashMap<(char * char), char list>) : Option<HashMap<(char 
 let grid_values (grid : string) : Option<HashMap<(char * char), char list>> =
 //  Convert grid into a dict of (square, char list) with '0' or '.' for empties.
     let chars = [for ch in grid do if ch |> isIn digits || ch |> isIn ['.'; '0'] then yield [ch]]
-    assert (List.length chars = 81)
-    HashMap [for z in List.zip squares chars -> z] |> display
+    assert (chars.Length = 81)
+    Some (HashMap [for z in List.zip squares chars -> z]) 
 
 
 let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
@@ -63,7 +65,7 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
     
         let rule1  (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
         //  (1) If a square s is reduced to one value d', then eliminate d' from the peers.
-            match List.length values.[s] with
+            match values.[s].Length with
                 | 0 -> None         // Contradiction: removed last value
                 | 1 -> 
                     let d' = values.[s].[0]
@@ -74,7 +76,7 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
             seq {for u in units.[s] -> fun v ->
                     let dplaces = [for s' in u do if d |> isIn values.[s'] then yield s']  
-                    match List.length dplaces with
+                    match dplaces.Length with
                         | 0 -> None  // Contradiction: no place for this value
                         | 1 -> assign dplaces.[0] d v 
                         | _ -> Some values
@@ -91,7 +93,7 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
 (*  Assign a value d by eliminating all the other values (except d) from values[s] and propagate.  
     Return Some values, except return None if a contradiction is detected. *)   
     let other_values = values.[s] |> List.filter (fun d' -> d' <> d) 
-    match List.length other_values with
+    match other_values.Length with
         | 0 -> Some values      // Already assigned
         | _ -> seq {for d' in other_values -> eliminate s d'} |> runWithUntil (Some values) Option.isNone
         | _ -> Some values
@@ -110,29 +112,44 @@ let parse_grid (grid : string) : Option<HashMap<(char * char), char list>> =
 
 let rec search (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
 //  Using depth-first search and propagation, try all possible values.
-    if seq {for s in squares -> List.length values.[s] = 1} |> Seq.forall (fun b -> b) then
+    if seq {for s in squares -> values.[s].Length = 1} |> Seq.forall (fun b -> b) then
         Some values   //    Solved!
     else
 //      Chose the unfilled square s with the fewest possibilities
-        let _, s = seq {for s in squares do if List.length values.[s] > 1 then yield List.length values.[s], s} |> Seq.min
+        let _, s = seq {for s in squares do if values.[s].Length > 1 then yield values.[s].Length, s} |> Seq.min
         seq {for d in values.[s] -> fun v -> assign s d v >>= search} |> runWithUntil (Some values) Option.isSome 
 
 let solve (grid : string) : Option<HashMap<(char * char), char list>> = 
     grid |> parse_grid >>= search
 
+let solved (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
+//  A puzzle is solved if each unit is a permutation of the digits 1 to 9
+    let isUnitSolved u = Set (seq {for s in u -> values.[s]}) =  Set (seq {for d in digits -> [d]})
+    match seq {for u in unitlist -> isUnitSolved u} |> Seq.forall (fun b -> b) with
+        | true -> Some values
+        | false -> None
 
+let solve_all (grids : seq<string>) (name) : unit =
+//  Attempt to solve a sequence of grids. Report results.
+    let time_solved grid =
+        let timer = new System.Diagnostics.Stopwatch()
+        timer.Start()
+        let values = solve grid
+        timer.Stop()
+        timer.Elapsed.TotalSeconds, values >>= solved
+
+    let times, results = [for grid in grids -> time_solved grid] |> List.unzip
+    let N = grids |> Seq.length
+    if N > 1 then
+        printfn "Solved %d of %d %s puzzles (avg %.2f secs (%d Hz), max %.2f secs)." 
+                (results |> List.countWith (fun o -> Option.isSome o)) N name ((times |> List.sum) / float N)
+                (N / int (times |> List.sum)) (times |> List.max)
 [<EntryPoint>]
 let main argv = 
-    let timer = new System.Diagnostics.Stopwatch()
-    timer.Start()
+    solve_all (File.ReadLines "top95.txt") "hard"
+    solve_all (File.ReadLines "hardest.txt") "hardest"
 
-    printfn "%A" argv
-    assert (Array.length argv = 1)
-    argv.[0] |> solve >>= display |> ignore
-
-    timer.Stop()
-    printfn "Elapsed Time: %i ms" timer.ElapsedMilliseconds
-    System.Console.ReadKey() |> ignore
+    System.Console.Read() |> ignore
 
     0 // retourne du code de sortie entier
 
