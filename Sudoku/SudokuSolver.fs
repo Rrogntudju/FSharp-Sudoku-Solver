@@ -9,19 +9,19 @@ let center (s : string) (w : int) =
 
 let (>>=) m f = Option.bind f m
 
-let rec allSome (v :  Option<'a>) (sq : seq<'a -> Option<'a>>) : Option<'a> =
-    if Option.isNone v || Seq.isEmpty sq then
-        v
+let rec allSome (values :  Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
+    if Option.isNone values || List.isEmpty fList then
+        values
     else
-      allSome (v >>= (Seq.head sq)) (Seq.tail sq)  
+      allSome (values >>= (List.head fList)) (List.tail fList)  
 
-let firstSome (v :  Option<'a>) (sq : seq<'a -> Option<'a>>) : Option<'a> =
-    let rec firstSomeRec (v :  Option<'a>) (state : Option<'a>) (sq : seq<'a -> Option<'a>>) : Option<'a> =
-        if Option.isSome v || Seq.isEmpty sq then
-            v
+let firstSome (values :  Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
+    let rec firstSomeRec (values :  Option<'a>) (state : Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
+        if Option.isSome values || List.isEmpty fList then
+            values
         else
-          firstSomeRec (state >>= (Seq.head sq)) state (Seq.tail sq)  
-    firstSomeRec None v sq
+          firstSomeRec (state >>= (List.head fList)) state (List.tail fList)  
+    firstSomeRec None values fList
 
 let digits = "123456789" |> Seq.toList
 let rows = "ABCDEFGHI" |> Seq.toList
@@ -68,18 +68,18 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
                 | 0 -> None         // Contradiction: removed last value
                 | 1 -> 
                     let d' = values.[s].[0]
-                    seq {for s' in peers.[s] -> eliminate s' d'} |> allSome (Some values)
+                    [for s' in peers.[s] -> eliminate s' d'] |> allSome (Some values)
                 | _ -> Some values
 
         let rule2 (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
-            seq {for u in units.[s] -> fun v ->
-                    let dplaces = [for s' in u do if d |> isIn values.[s'] then yield s']  
-                    match dplaces.Length with
-                        | 0 -> None  // Contradiction: no place for this value
-                        | 1 -> assign dplaces.[0] d v   //  # d can only be in one place in unit; assign it there
-                        | _ -> Some values
-            } |> allSome (Some values)
+            [for u in units.[s] -> fun v ->
+                let dplaces = [for s' in u do if d |> isIn values.[s'] then yield s']  
+                match dplaces.Length with
+                    | 0 -> None  // Contradiction: no place for this value
+                    | 1 -> assign dplaces.[0] d v   //  # d can only be in one place in unit; assign it there
+                    | _ -> Some values
+            ] |> allSome (Some values)
 
     (*  Eliminate d from values[s]; propagate when values or places <= 2.
         Return Some values, except return None if a contradiction is detected. *)        
@@ -94,16 +94,15 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
     let other_values = values.[s] |> List.filter (fun d' -> d' <> d) 
     match other_values.Length with
         | 0 -> Some values      // Already assigned
-        | _ -> seq {for d' in other_values -> eliminate s d'} |> allSome (Some values)
+        | _ -> [for d' in other_values -> eliminate s d'] |> allSome (Some values)
         | _ -> Some values
 
 let parse_grid (grid : string) : Option<HashMap<(char * char), char list>> =
-(*  Convert grid to Some dict of possible values, square, digits}, or
+(*  Convert grid to Some dict of possible values, [square, digits], or
     return None if a contradiction is detected. *)
     let assignGrid (gvalues : HashMap<(char * char), char list>)  =
         let values = HashMap [for s in squares do yield s, digits]
-        seq {for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign s d
-        } |> allSome (Some values)
+        [for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign s d] |> allSome (Some values)
     
     grid_values grid >>= assignGrid
 
@@ -114,7 +113,7 @@ let rec search (values : HashMap<(char * char), char list>) : Option<HashMap<(ch
     else
 //      Chose the unfilled square s with the fewest possibilities
         let _, s = seq {for s in squares do if values.[s].Length > 1 then yield values.[s].Length, s} |> Seq.min
-        seq {for d in values.[s] -> fun v -> assign s d v >>= search} |> firstSome (Some values) 
+        [for d in values.[s] -> fun v -> assign s d v >>= search] |> firstSome (Some values) 
  
 let solve (grid : string) : Option<HashMap<(char * char), char list>> = 
     grid |> parse_grid >>= search
@@ -126,19 +125,28 @@ let solved (values : HashMap<(char * char), char list>) : Option<HashMap<(char *
         | true -> Some values
         | false -> None
     
-let rg = System.Random()
+let rnd = System.Random()
 
 let rec random_puzzle (N : int) : string =
 (* Make a random puzzle with N or more assignments. Restart on contradictions.
     Note the resulting puzzle is not guaranteed to be solvable, but empirically
     about 99.8% of them are solvable. Some have multiple solutions.    *)
-    let shuffled (l : 'a list) : 'a list =
-       l |> List.permute (fun _ -> rg.Next(l.Length))
-  
+    let shuffled (lst : 'a array) : 'a array =
+//  https://rosettacode.org/wiki/Knuth_shuffle#F.23      
+        let Swap i j =                                   // Standard swap
+            let item = lst.[i]
+            lst.[i] <- lst.[j]
+            lst.[j] <- item
+
+        let ln = lst.Length
+        [0..(ln - 2)]                                     // For all indices except the last
+        |> Seq.iter (fun i -> Swap i (rnd.Next(i, ln)))   // swap th item at the index with a random one following it (or itself)
+        lst 
+
     let choice (l : 'a list) : 'a =
-        l.[rg.Next(l.Length)]
+        l.[rnd.Next(l.Length)]
     
-    let rec findPuzzle (values : Option<HashMap<(char * char), char list>>) (sq : seq<char * char>) : Option<HashMap<(char * char), char list>> =
+    let rec findPuzzle (values : Option<HashMap<(char * char), char list>>) (sList : list<char * char>) : Option<HashMap<(char * char), char list>> =
         match values with
             | None -> None
             | Some v -> 
@@ -146,16 +154,15 @@ let rec random_puzzle (N : int) : string =
                 if ds.Length >= N && (List.distinct ds).Length >= 8 then
                     values
                 else
-                    if Seq.isEmpty sq then
+                    if Seq.isEmpty sList then
                         None
                     else
-                        let s = Seq.head sq
-                        let values' = assign s (v.[s] |> choice) v
-                        findPuzzle values' (Seq.tail sq)
+                        let s = List.head sList
+                        findPuzzle (assign s (v.[s] |> choice) v) (List.tail sList)
  
     let values = HashMap [for s in squares do yield s, digits]
-    let values' = seq {for s in shuffled squares -> s} |> findPuzzle (Some values)
-    match values' with
+    let squaresArray = List.toArray squares
+    match [for s in shuffled squaresArray -> s] |> findPuzzle (Some values) with
         | None -> random_puzzle N
         | Some v -> String.concat "" [for s in squares -> if v.[s].Length = 1 then v.[s].ToString() else "."]
 
@@ -186,7 +193,7 @@ let main argv =
     solve_all (File.ReadLines "easy50.txt") "easy" None
     solve_all (File.ReadLines "top95.txt") "hard" None
     solve_all (File.ReadLines "hardest.txt") "hardest" None
-//    solve_all ([for _ in [1 .. 99] -> random_puzzle 17]) "random" (Some 100.0)
+    solve_all ([for _ in [1 .. 99] -> random_puzzle 17]) "random" (Some 100.0)
     System.Console.Read() |> ignore
 
     0
