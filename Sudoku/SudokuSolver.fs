@@ -103,7 +103,6 @@ let parse_grid (grid : string) : Option<HashMap<(char * char), char list>> =
     let assignGrid (gvalues : HashMap<(char * char), char list>)  =
         let values = HashMap [for s in squares do yield s, digits]
         [for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign s d] |> allSome (Some values)
-    
     grid_values grid >>= assignGrid
 
 let rec search (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
@@ -131,17 +130,17 @@ let rec random_puzzle (N : int) : string =
 (* Make a random puzzle with N or more assignments. Restart on contradictions.
     Note the resulting puzzle is not guaranteed to be solvable, but empirically
     about 99.8% of them are solvable. Some have multiple solutions.    *)
-    let shuffled (lst : 'a array) : 'a array =
-//  https://rosettacode.org/wiki/Knuth_shuffle#F.23      
+    let shuffled (l : 'a list) : 'a list =
+    //  https://rosettacode.org/wiki/Knuth_shuffle#F.23      
+        let lst = List.toArray l
         let Swap i j =                                   // Standard swap
             let item = lst.[i]
             lst.[i] <- lst.[j]
             lst.[j] <- item
-
         let ln = lst.Length
         [0..(ln - 2)]                                     // For all indices except the last
         |> Seq.iter (fun i -> Swap i (rnd.Next(i, ln)))   // swap th item at the index with a random one following it (or itself)
-        lst 
+        lst |> Array.toList
 
     let choice (l : 'a list) : 'a =
         l.[rnd.Next(l.Length)]
@@ -159,10 +158,9 @@ let rec random_puzzle (N : int) : string =
                     else
                         let s = List.head sList
                         findPuzzle (assign s (v.[s] |> choice) v) (List.tail sList)
- 
+
     let values = HashMap [for s in squares do yield s, digits]
-    let squaresArray = List.toArray squares
-    match [for s in shuffled squaresArray -> s] |> findPuzzle (Some values) with
+    match [for s in shuffled squares -> s] |> findPuzzle (Some values) with
         | None -> random_puzzle N
         | Some v -> String.concat "" [for s in squares -> if v.[s].Length = 1 then v.[s].ToString() else "."]
 
@@ -193,8 +191,6 @@ let main argv =
     solve_all (File.ReadLines "easy50.txt") "easy" None
     solve_all (File.ReadLines "top95.txt") "hard" None
     solve_all (File.ReadLines "hardest.txt") "hardest" None
-    solve_all ([for _ in [1 .. 99] -> random_puzzle 17]) "random" (Some 100.0)
-    System.Console.Read() |> ignore
-
+    solve_all ([for _ in [1 .. 99] -> random_puzzle 17]) "random" (Some 0.02) 
     0
 
