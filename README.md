@@ -3,8 +3,7 @@ A translation of Peter Norvig’s Sudoku solver from Python to F#   See http://w
 
 #Getting Started
 1.	Installation process
-2.	Software dependencies
-    ExtCore (NuGet package needed for HashMap).
+2.	Software dependencies : ExtCore (NuGet package needed for HashMap).
 3.	Latest releases
 4.	API references
 
