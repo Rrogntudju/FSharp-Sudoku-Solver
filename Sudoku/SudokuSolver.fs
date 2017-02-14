@@ -56,7 +56,7 @@ let grid_values (grid : string) : Option<HashMap<(char * char), char list>> =
 //  Convert grid into a dict of (square, char list) with '0' or '.' for empties.
     let chars = [for ch in grid do if ch |> isIn digits || ch |> isIn ['.'; '0'] then yield [ch]]
     assert (chars.Length = 81)
-    Some (HashMap [for z in List.zip squares chars -> z]) 
+    Some (HashMap (List.zip squares chars))
 
 let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
     
@@ -74,7 +74,7 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
         let rule2 (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
             [for u in units.[s] -> fun v ->
-                let dplaces = [for s' in u do if d |> isIn values.[s'] then yield s']  
+                let dplaces = u |> List.filter (fun s' -> d |> isIn values.[s']) 
                 match dplaces.Length with
                     | 0 -> None  // Contradiction: no place for this value
                     | 1 -> assign dplaces.[0] d v   //  # d can only be in one place in unit; assign it there
@@ -101,7 +101,7 @@ let parse_grid (grid : string) : Option<HashMap<(char * char), char list>> =
 (*  Convert grid to Some dict of possible values, [square, digits], or
     return None if a contradiction is detected. *)
     let assignGrid (gvalues : HashMap<(char * char), char list>)  =
-        let values = HashMap [for s in squares do yield s, digits]
+        let values = HashMap (squares |> List.map (fun s -> s, digits))
         [for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign s d] |> allSome (Some values)
     grid_values grid >>= assignGrid
 
@@ -159,8 +159,8 @@ let rec random_puzzle (N : int) : string =
                         let s = List.head sList
                         findPuzzle (assign s (v.[s] |> choice) v) (List.tail sList)
 
-    let values = HashMap [for s in squares do yield s, digits]
-    match [for s in shuffled squares -> s] |> findPuzzle (Some values) with
+    let values = HashMap [for s in squares -> s, digits]
+    match shuffled squares |> findPuzzle (Some values) with
         | None -> random_puzzle N
         | Some v -> String.concat "" [for s in squares -> if v.[s].Length = 1 then v.[s].ToString() else "."]
 
