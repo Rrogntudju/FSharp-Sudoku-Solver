@@ -37,10 +37,10 @@ let unitlist =
     [for r in [rows.[0..2]; rows.[3..5]; rows.[6..8]] do for c in [cols.[0..2]; cols.[3..5]; cols.[6..8]] -> cross r c]
 
 //  units is a dictionary where each square maps to the list of units that contain the square  
-let units = HashMap [for s in squares -> s, [for u in unitlist do if s |> isIn u then yield u]]
+let units = HashMap [for s in squares -> s, unitlist |> List.filter (fun u -> s |> isIn u)]
 
 //  peers is a dictionary where each square s maps to the set of squares formed by the union of the squares in the units of s, but not s itself 
-let peers = HashMap [for s in squares -> s, [for u in units.[s] do for s' in u do if s' <> s then yield s']]
+let peers = HashMap [for s in squares -> s, set(units.[s] |> List.concat |> List.filter (fun s' -> s' <> s))]
 
 let display (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
     let pvalues = dict[for s in squares -> s, new string (Array.ofList values.[s])]  
@@ -59,22 +59,21 @@ let grid_values (grid : string) : Option<HashMap<(char * char), char list>> =
     Some (HashMap (List.zip squares chars))
 
 let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
-    
+
     let rec eliminate (s : char * char) (d : char) (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
   
         let rule1  (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
         //  (1) If a square s is reduced to one value d', then eliminate d' from the peers.
             match values.[s].Length with
                 | 0 -> None         // Contradiction: removed last value
-                | 1 -> 
-                    let d' = values.[s].[0]
-                    [for s' in peers.[s] -> eliminate s' d'] |> allSome (Some values)
+                | 1 -> let d' = values.[s].[0]
+                       [for s' in peers.[s] -> eliminate s' d'] |> allSome (Some values)
                 | _ -> Some values
 
         let rule2 (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
             [for u in units.[s] -> fun v ->
-                let dplaces = u |> List.filter (fun s' -> d |> isIn values.[s']) 
+                let dplaces = u |> List.filter (fun s -> d |> isIn values.[s]) 
                 match dplaces.Length with
                     | 0 -> None  // Contradiction: no place for this value
                     | 1 -> assign dplaces.[0] d v   //  # d can only be in one place in unit; assign it there
@@ -91,11 +90,8 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
 
 (*  Assign a value d by eliminating all the other values (except d) from values[s] and propagate.  
     Return Some values, except return None if a contradiction is detected. *)   
-    let other_values = values.[s] |> List.filter (fun d' -> d' <> d) 
-    match other_values.Length with
-        | 0 -> Some values      // Already assigned
-        | _ -> [for d' in other_values -> eliminate s d'] |> allSome (Some values)
-        | _ -> Some values
+    let other_values = values.[s] |> List.filter (fun d' -> d' <> d)
+    [for d' in other_values -> eliminate s d'] |> allSome (Some values)
 
 let parse_grid (grid : string) : Option<HashMap<(char * char), char list>> =
 (*  Convert grid to Some dict of possible values, [square, digits], or
@@ -110,7 +106,7 @@ let rec search (values : HashMap<(char * char), char list>) : Option<HashMap<(ch
     if seq {for s in squares -> values.[s].Length = 1} |> Seq.forall (fun b -> b) then
         Some values   //    Solved!
     else
-//      Chose the unfilled square s with the fewest possibilities
+//      Choose the unfilled square s with the fewest possibilities
         let _, s = seq {for s in squares do if values.[s].Length > 1 then yield values.[s].Length, s} |> Seq.min
         [for d in values.[s] -> fun v -> assign s d v >>= search] |> firstSome (Some values) 
  
