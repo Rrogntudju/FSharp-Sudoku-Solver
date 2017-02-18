@@ -72,12 +72,12 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
 
         let rule2 (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
-            [for u in units.[s] -> fun v ->
-                let dplaces = u |> List.filter (fun s -> d |> isIn values.[s]) 
+            [for u in units.[s] -> fun (v : HashMap<(char * char), char list>) ->
+                let dplaces = u |> List.filter (fun s -> d |> isIn v.[s]) 
                 match dplaces.Length with
                     | 0 -> None  // Contradiction: no place for this value
                     | 1 -> assign dplaces.[0] d v   //  # d can only be in one place in unit; assign it there
-                    | _ -> Some values
+                    | _ -> Some v
             ] |> allSome (Some values)
 
     (*  Eliminate d from values[s]; propagate when values or places <= 2.
@@ -187,6 +187,6 @@ let main argv =
     solve_all (File.ReadLines "easy50.txt") "easy" None
     solve_all (File.ReadLines "top95.txt") "hard" None
     solve_all (File.ReadLines "hardest.txt") "hardest" None
-    solve_all ([for _ in [1 .. 99] -> random_puzzle 17]) "random" (Some 0.02) 
+    solve_all ([for _ in [1 .. 99] -> random_puzzle 17]) "random" (Some 0.02)
     0
 
