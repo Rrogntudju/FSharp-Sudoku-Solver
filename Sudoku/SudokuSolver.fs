@@ -73,15 +73,14 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
         let rule2 (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
             [for u in units.[s] -> fun (v : HashMap<(char * char), char list>) ->
-                let dplaces = u |> List.filter (fun s -> d |> isIn v.[s]) 
+                let dplaces = u |> List.filter (fun s' -> d |> isIn v.[s']) 
                 match dplaces.Length with
                     | 0 -> None  // Contradiction: no place for this value
                     | 1 -> assign dplaces.[0] d v   //  # d can only be in one place in unit; assign it there
                     | _ -> Some v
             ] |> allSome (Some values)
 
-    (*  Eliminate d from values[s]; propagate when values or places <= 2.
-        Return Some values, except return None if a contradiction is detected. *)        
+    //  Eliminate d from values.[s] and propagate. Return Some values, except return None if a contradiction is detected.        
         if not (d |> isIn values.[s]) then 
             Some values        // Already eliminated
         else
@@ -94,8 +93,7 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
     [for d' in other_values -> eliminate s d'] |> allSome (Some values)
 
 let parse_grid (grid : string) : Option<HashMap<(char * char), char list>> =
-(*  Convert grid to Some dict of possible values, [square, digits], or
-    return None if a contradiction is detected. *)
+//  Convert grid to Some dict of possible values, [square, digits], or return None if a contradiction is detected. 
     let assignGrid (gvalues : HashMap<(char * char), char list>)  =
         let values = HashMap (squares |> List.map (fun s -> s, digits))
         [for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign s d] |> allSome (Some values)
