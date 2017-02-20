@@ -42,6 +42,20 @@ let units = HashMap [for s in squares -> s, unitlist |> List.filter (fun u -> s 
 //  peers is a dictionary where each square s maps to the set of squares formed by the union of the squares in the units of s, but not s itself 
 let peers = HashMap [for s in squares -> s, set(units.[s] |> List.concat |> List.filter (fun s' -> s' <> s))]
 
+let test : unit =
+//  A set of unit tests.
+    assert (squares.Length = 81)
+    assert (unitlist.Length = 27)
+    assert ([for s in squares -> units.[s]] |> Seq.forall (fun u -> u.Length = 3))
+    assert ([for s in squares -> peers.[s]] |> Seq.forall (fun p -> p.Count = 20))
+    assert (units.['C','2'] = [['A','2'; 'B','2'; 'C','2'; 'D','2'; 'E','2'; 'F','2'; 'G','2'; 'H','2'; 'I','2'];
+                               ['C','1'; 'C','2'; 'C','3'; 'C','4'; 'C','5'; 'C','6'; 'C','7'; 'C','8'; 'C','9'];
+                               ['A','1'; 'A','2'; 'A','3'; 'B','1'; 'B','2'; 'B','3'; 'C','1'; 'C','2'; 'C','3']])
+    assert (peers.['C','2'] == set(['A','2'; 'B','2'; 'D','2'; 'E','2'; 'F','2'; 'G','2'; 'H','2'; 'I','2';
+                                    'C','1'; 'C','3'; 'C','4'; 'C','5'; 'C','6'; 'C','7'; 'C','8'; 'C','9';
+                                    'A','1'; 'A','3'; 'B','1'; 'B','3']))
+    printfn "All tests pass."
+
 let display (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
     let pvalues = dict[for s in squares -> s, new string (Array.ofList values.[s])]  
     let width = ([for s in squares -> String.length pvalues.[s]] |> List.max) + 1
@@ -182,6 +196,7 @@ let solve_all (grids : seq<string>) (name) (showif : float Option) : unit =
                 (float N / (times |> List.sum)) (times |> List.max)
 [<EntryPoint>]
 let main argv = 
+    test
     solve_all (File.ReadLines "easy50.txt") "easy" None
     solve_all (File.ReadLines "top95.txt") "hard" None
     solve_all (File.ReadLines "hardest.txt") "hardest" None
