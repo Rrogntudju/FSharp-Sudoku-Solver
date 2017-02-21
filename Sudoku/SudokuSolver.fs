@@ -10,17 +10,18 @@ let center (s : string) (w : int) =
 let (>>=) m f = Option.bind f m
 
 let rec allSome (values :  Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
-    if Option.isNone values || List.isEmpty fList then
-        values
-    else
-      allSome (values >>= (List.head fList)) (List.tail fList)  
+    match fList with
+        | [] -> values
+        | f::fl when Option.isSome values -> allSome (values >>= f) fl
+        | _ -> None
 
 let firstSome (values :  Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
-    let rec firstSomeRec (values :  Option<'a>) (state : Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
-        if Option.isSome values || List.isEmpty fList then
-            values
-        else
-          firstSomeRec (state >>= (List.head fList)) state (List.tail fList)  
+    let rec firstSomeRec (values :  Option<'a>) (initVal : Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
+         match fList with
+            | [] -> values
+            | f::fl when Option.isNone values -> firstSomeRec (initVal >>= f) initVal fl
+            | _ -> values
+
     firstSomeRec None values fList
 
 let digits = "123456789" |> Seq.toList
@@ -28,7 +29,7 @@ let rows = "ABCDEFGHI" |> Seq.toList
 let cols = digits
 
 let cross (rows : char list) (cols : char list) : string list = 
-    [for ch in rows do for d in cols -> ch.ToString() + d.ToString()]  // ~45% faster than ch,d as an HashMap key
+    [for ch in rows do for d in cols -> ch.ToString() + d.ToString()]  // a string is ~45% faster than a tuple as an HashMap key
 
 let squares = cross rows cols
 let unitlist = 
@@ -177,8 +178,7 @@ let solve_all (grids : seq<string>) (name) (showif : float Option) : unit =
     When showif is a number of seconds, display puzzles that take longer.
     When showif is None, don't display any puzzles.     *)
     let time_solved grid showif =
-        let timer = new System.Diagnostics.Stopwatch()
-        timer.Start()
+        let timer = System.Diagnostics.Stopwatch.StartNew()
         let values = solve grid
         timer.Stop()
         let t = timer.Elapsed.TotalSeconds
