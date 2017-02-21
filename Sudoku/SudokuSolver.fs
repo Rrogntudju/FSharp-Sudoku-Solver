@@ -63,7 +63,7 @@ let display (values : HashMap<string, char list>) : Option<HashMap<string, char 
     for ch in rows do
         printfn "%s" (String.concat "" [for d in digits -> center pvalues.[ch.ToString() + d.ToString()] width + (if d |> isIn ['3'; '6'] then "|" else "")]) 
         if ch |> isIn ['C'; 'F'] then printfn "%s" line
-    printfn "%s" ""
+    printfn "" 
     Some values
 
 let grid_values (grid : string) : Option<HashMap<string, char list>> =
