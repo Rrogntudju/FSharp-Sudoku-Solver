@@ -27,8 +27,8 @@ let digits = "123456789" |> Seq.toList
 let rows = "ABCDEFGHI" |> Seq.toList
 let cols = digits
 
-let cross (rows : char list) (cols : char list) : (char * char) list = 
-    [for ch in rows do for d in cols -> ch, d]
+let cross (rows : char list) (cols : char list) : string list = 
+    [for ch in rows do for d in cols -> ch.ToString() + d.ToString()]  // ~45% faster than ch,d as an HashMap key
 
 let squares = cross rows cols
 let unitlist = 
@@ -48,35 +48,35 @@ let test : unit =
     assert (unitlist.Length = 27)
     assert ([for s in squares -> units.[s]] |> Seq.forall (fun u -> u.Length = 3))
     assert ([for s in squares -> peers.[s]] |> Seq.forall (fun p -> p.Count = 20))
-    assert (units.['C','2'] = [['A','2'; 'B','2'; 'C','2'; 'D','2'; 'E','2'; 'F','2'; 'G','2'; 'H','2'; 'I','2'];
-                               ['C','1'; 'C','2'; 'C','3'; 'C','4'; 'C','5'; 'C','6'; 'C','7'; 'C','8'; 'C','9'];
-                               ['A','1'; 'A','2'; 'A','3'; 'B','1'; 'B','2'; 'B','3'; 'C','1'; 'C','2'; 'C','3']])
-    assert (peers.['C','2'] = set(['A','2'; 'B','2'; 'D','2'; 'E','2'; 'F','2'; 'G','2'; 'H','2'; 'I','2';
-                                   'C','1'; 'C','3'; 'C','4'; 'C','5'; 'C','6'; 'C','7'; 'C','8'; 'C','9';
-                                   'A','1'; 'A','3'; 'B','1'; 'B','3']))
+    assert (units.["C2"] = [["A2"; "B2"; "C2"; "D2"; "E2"; "F2"; "G2"; "H2"; "I2"];
+                            ["C1"; "C2"; "C3"; "C4"; "C5"; "C6"; "C7"; "C8"; "C9"];
+                            ["A1"; "A2"; "A3"; "B1"; "B2"; "B3"; "C1"; "C2"; "C3"]])
+    assert (peers.["C2"] = set(["A2"; "B2"; "D2"; "E2"; "F2"; "G2"; "H2"; "I2";
+                                "C1"; "C3"; "C4"; "C5"; "C6"; "C7"; "C8"; "C9";
+                                "A1"; "A3"; "B1"; "B3"]))
     printfn "All tests pass."
 
-let display (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
+let display (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
     let pvalues = dict[for s in squares -> s, new string (Array.ofList values.[s])]  
     let width = ([for s in squares -> String.length pvalues.[s]] |> List.max) + 1
     let line = String.concat "+" [for _ in 1 .. 3 -> String.replicate (width * 3) "-"]
     for ch in rows do
-        printfn "%s" (String.concat "" [for d in digits -> center pvalues.[ch, d] width + (if d |> isIn ['3'; '6'] then "|" else "")]) 
+        printfn "%s" (String.concat "" [for d in digits -> center pvalues.[ch.ToString() + d.ToString()] width + (if d |> isIn ['3'; '6'] then "|" else "")]) 
         if ch |> isIn ['C'; 'F'] then printfn "%s" line
     printfn "%s" ""
     Some values
 
-let grid_values (grid : string) : Option<HashMap<(char * char), char list>> =
+let grid_values (grid : string) : Option<HashMap<string, char list>> =
 //  Convert grid into a dict of (square, char list) with '0' or '.' for empties.
     let chars = [for ch in grid do if ch |> isIn digits || ch |> isIn ['.'; '0'] then yield [ch]]
     assert (chars.Length = 81)
     Some (HashMap (List.zip squares chars))
 
-let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
+let rec assign (s : string) (d : char) (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
 
-    let rec eliminate (s : char * char) (d : char) (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
+    let rec eliminate (s : string) (d : char) (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
   
-        let rule1  (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
+        let rule1  (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
         //  (1) If a square s is reduced to one value d', then eliminate d' from the peers.
             match values.[s].Length with
                 | 0 -> None         // Contradiction: removed last value
@@ -84,9 +84,9 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
                        [for s' in peers.[s] -> eliminate s' d'] |> allSome (Some values)
                 | _ -> Some values
 
-        let rule2 (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
+        let rule2 (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
         //  (2) If a unit u is reduced to only one place for a value d, then put it there.
-            [for u in units.[s] -> fun (v : HashMap<(char * char), char list>) ->
+            [for u in units.[s] -> fun (v : HashMap<string, char list>) ->
                 let dplaces = u |> List.filter (fun s' -> d |> isIn v.[s']) 
                 match dplaces.Length with
                     | 0 -> None  // Contradiction: no place for this value
@@ -106,14 +106,14 @@ let rec assign (s : char * char) (d : char) (values : HashMap<(char * char), cha
     let other_values = values.[s] |> List.filter (fun d' -> d' <> d)
     [for d' in other_values -> eliminate s d'] |> allSome (Some values)
 
-let parse_grid (grid : string) : Option<HashMap<(char * char), char list>> =
+let parse_grid (grid : string) : Option<HashMap<string, char list>> =
 //  Convert grid to Some dict of possible values, [square, digits], or return None if a contradiction is detected. 
-    let assignGrid (gvalues : HashMap<(char * char), char list>)  =
+    let assignGrid (gvalues : HashMap<string, char list>)  =
         let values = HashMap (squares |> List.map (fun s -> s, digits))
         [for s in squares do for d in gvalues.[s] do if d |> isIn digits then yield assign s d] |> allSome (Some values)
     grid_values grid >>= assignGrid
 
-let rec search (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
+let rec search (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
 //  Using depth-first search and propagation, try all possible values.
     if seq {for s in squares -> values.[s].Length = 1} |> Seq.forall (fun b -> b) then
         Some values   //    Solved!
@@ -122,10 +122,10 @@ let rec search (values : HashMap<(char * char), char list>) : Option<HashMap<(ch
         let _, s = seq {for s in squares do if values.[s].Length > 1 then yield values.[s].Length, s} |> Seq.min
         [for d in values.[s] -> fun v -> assign s d v >>= search] |> firstSome (Some values) 
  
-let solve (grid : string) : Option<HashMap<(char * char), char list>> = 
+let solve (grid : string) : Option<HashMap<string, char list>> = 
     grid |> parse_grid >>= search
 
-let solved (values : HashMap<(char * char), char list>) : Option<HashMap<(char * char), char list>> =
+let solved (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
 //  A puzzle is solved if each unit is a permutation of the digits 1 to 9
     let isUnitSolved u = Set (seq {for s in u -> values.[s]}) =  Set (seq {for d in digits -> [d]})
     match seq {for u in unitlist -> isUnitSolved u} |> Seq.forall (fun b -> b) with
@@ -153,7 +153,7 @@ let rec random_puzzle (N : int) : string =
     let choice (l : 'a list) : 'a =
         l.[rnd.Next(l.Length)]
     
-    let rec findPuzzle (values : Option<HashMap<(char * char), char list>>) (sList : list<char * char>) : Option<HashMap<(char * char), char list>> =
+    let rec findPuzzle (values : Option<HashMap<string, char list>>) (sList : list<string>) : Option<HashMap<string, char list>> =
         match values with
             | None -> None
             | Some v -> 
