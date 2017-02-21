@@ -2,18 +2,18 @@
 open System.Collections.Generic
 open System.IO
 
-let isIn (l : 'a list) (i : 'a) = List.contains i l
+let inline isIn (l : 'a list) (i : 'a) = List.contains i l
 let center (s : string) (w : int) =
     let len = s.Length
     if w > len then s.PadLeft(((w - len) / 2) + len).PadRight(w) else s
 
-let (>>=) m f = Option.bind f m
+let inline (>>=) m f = Option.bind f m
 
 let rec allSome (values :  Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
     match fList with
         | [] -> values
         | f::fl when Option.isSome values -> allSome (values >>= f) fl
-        | _ -> None
+        | _ -> values
 
 let firstSome (values :  Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
     let rec firstSomeRec (values :  Option<'a>) (initVal : Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'a> =
@@ -24,8 +24,8 @@ let firstSome (values :  Option<'a>) (fList : list<'a -> Option<'a>>) : Option<'
 
     firstSomeRec None values fList
 
-let digits = "123456789" |> Seq.toList
-let rows = "ABCDEFGHI" |> Seq.toList
+let digits = ['1' .. '9']
+let rows = ['A' .. 'I']
 let cols = digits
 
 let cross (rows : char list) (cols : char list) : string list = 
@@ -151,8 +151,7 @@ let rec random_puzzle (N : int) : string =
         |> Seq.iter (fun i -> Swap i (rnd.Next(i, ln)))   // swap th item at the index with a random one following it (or itself)
         lst |> Array.toList
 
-    let choice (l : 'a list) : 'a =
-        l.[rnd.Next(l.Length)]
+    let inline choice (l : 'a list) : 'a = l.[rnd.Next(l.Length)]
     
     let rec findPuzzle (values : Option<HashMap<string, char list>>) (sList : list<string>) : Option<HashMap<string, char list>> =
         match values with
