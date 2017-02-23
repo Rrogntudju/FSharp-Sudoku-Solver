@@ -161,11 +161,9 @@ let rec random_puzzle (N : int) : string =
                 if ds.Length >= N && (List.distinct ds).Length >= 8 then
                     values
                 else
-                    if Seq.isEmpty sList then
-                        None
-                    else
-                        let s = List.head sList
-                        findPuzzle (assign s (v.[s] |> choice) v) (List.tail sList)
+                    match sList with
+                        | [] -> None
+                        | s::sl -> findPuzzle (assign s (v.[s] |> choice) v) sl
 
     let values = HashMap [for s in squares -> s, digits]
     match shuffled squares |> findPuzzle (Some values) with
