@@ -2,7 +2,7 @@
 open System.Collections.Generic
 open System.IO
 
-let inline isIn (l : 'a list) (i : 'a) = List.contains i l
+let inline isIn (l : 'a list) (i : 'a) = List.exists (fun a -> a = i) l   // exists is ~10X faster than contains
 let center (s : string) (w : int) =
     let len = s.Length
     if w > len then s.PadLeft(((w - len) / 2) + len).PadRight(w) else s
