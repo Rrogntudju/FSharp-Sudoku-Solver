@@ -128,7 +128,7 @@ let solve (grid : string) : Option<HashMap<string, char list>> =
 
 let solved (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
 //  A puzzle is solved if each unit is a permutation of the digits 1 to 9
-    let isUnitSolved u = Set (seq {for s in u -> values.[s]}) =  Set (seq {for d in digits -> [d]})
+    let isUnitSolved u = Set (seq {for s in u -> values.[s]}) = Set (seq {for d in digits -> [d]})
     match seq {for u in unitlist -> isUnitSolved u} |> Seq.forall (fun b -> b) with
         | true -> Some values
         | false -> None
