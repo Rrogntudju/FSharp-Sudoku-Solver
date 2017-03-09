@@ -9,7 +9,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Sudoku</RootNamespace>
     <AssemblyName>Sudoku</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Sudoku</Name>
@@ -58,6 +58,9 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <PropertyGroup>
+    <PostBuildEvent>copy "$(ProjectDir)puzzles\*.*" "$(TargetDir)" /Y</PostBuildEvent>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="SudokuSolver.fs" />
@@ -67,16 +70,13 @@
   <ItemGroup>
     <Reference Include="ExtCore">
       <HintPath>..\packages\ExtCore.0.8.46\lib\net45\ExtCore.dll</HintPath>
-      <Private>True</Private>
     </Reference>
+    <Reference Include="FSharp.Core, Version=4.4.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
   </ItemGroup>
-  <PropertyGroup>
-    <PostBuildEvent>copy "$(ProjectDir)puzzles\*.*" "$(TargetDir)" /Y</PostBuildEvent>
-  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
