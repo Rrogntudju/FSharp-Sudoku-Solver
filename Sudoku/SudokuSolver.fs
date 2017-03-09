@@ -2,7 +2,7 @@
 open System.Collections.Generic
 open System.IO
 
-let inline isIn (l : 'a list) (i : 'a) = List.exists (fun a -> a = i) l   // exists is ~10X faster than contains
+let inline isIn (l : 'a list) (i : 'a) = List.exists ((=) i) l   // exists is ~10X faster than contains
 let center (s : string) (w : int) =
     let len = s.Length
     if w > len then s.PadLeft(((w - len) / 2) + len).PadRight(w) else s
@@ -41,7 +41,7 @@ let unitlist =
 let units = HashMap [for s in squares -> s, unitlist |> List.filter (fun u -> s |> isIn u)]
 
 //  peers is a dictionary where each square s maps to the set of squares formed by the union of the squares in the units of s, but not s itself 
-let peers = HashMap [for s in squares -> s, set(units.[s] |> List.concat |> List.filter (fun s' -> s' <> s))]
+let peers = HashMap [for s in squares -> s, set(units.[s] |> List.concat |> List.filter ((<>) s))]
 
 let test : unit =
 //  A set of unit tests.
@@ -99,12 +99,12 @@ let rec assign (s : string) (d : char) (values : HashMap<string, char list>) : O
         if not (d |> isIn values.[s]) then 
             Some values        // Already eliminated
         else
-            let values' = values |> HashMap.add s (values.[s] |> List.filter (fun d' -> d' <> d))
+            let values' = values |> HashMap.add s (values.[s] |> List.filter ((<>) d))
             values' |> rule1 >>= rule2
 
 (*  Assign a value d by eliminating all the other values (except d) from values[s] and propagate.  
     Return Some values, except return None if a contradiction is detected. *)   
-    let other_values = values.[s] |> List.filter (fun d' -> d' <> d)
+    let other_values = values.[s] |> List.filter ((<>) d)
     [for d' in other_values -> eliminate s d'] |> allSome (Some values)
 
 let parse_grid (grid : string) : Option<HashMap<string, char list>> =
@@ -116,7 +116,7 @@ let parse_grid (grid : string) : Option<HashMap<string, char list>> =
 
 let rec search (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
 //  Using depth-first search and propagation, try all possible values.
-    if seq {for s in squares -> values.[s].Length = 1} |> Seq.forall (fun b -> b) then
+    if seq {for s in squares -> values.[s].Length = 1} |> Seq.forall (id) then
         Some values   //    Solved!
     else
 //      Choose the unfilled square s with the fewest possibilities
@@ -129,7 +129,7 @@ let solve (grid : string) : Option<HashMap<string, char list>> =
 let solved (values : HashMap<string, char list>) : Option<HashMap<string, char list>> =
 //  A puzzle is solved if each unit is a permutation of the digits 1 to 9
     let isUnitSolved u = Set (seq {for s in u -> values.[s]}) = Set (seq {for d in digits -> [d]})
-    match seq {for u in unitlist -> isUnitSolved u} |> Seq.forall (fun b -> b) with
+    match seq {for u in unitlist -> isUnitSolved u} |> Seq.forall (id) with
         | true -> Some values
         | false -> None
     
@@ -179,7 +179,7 @@ let solve_all (grids : seq<string>) (name) (showif : float Option) : unit =
         let values = solve grid
         timer.Stop()
         let t = timer.Elapsed.TotalSeconds
-        if showif |> Option.exists (fun showif -> t > showif) then
+        if showif |> Option.exists ((>) t) then
             grid |> grid_values >>= display |> ignore
             values >>= display |> ignore
             printfn "(%.2f seconds)" t
@@ -189,7 +189,7 @@ let solve_all (grids : seq<string>) (name) (showif : float Option) : unit =
     let N = grids |> Seq.length
     if N > 1 then
         printfn "Solved %d of %d %s puzzles (avg %.2f secs (%.0f Hz), max %.2f secs)." 
-                (results |> List.countWith (fun o -> Option.isSome o)) N name ((times |> List.sum) / float N)
+                (results |> List.countWith (Option.isSome)) N name ((times |> List.sum) / float N)
                 (float N / (times |> List.sum)) (times |> List.max)
 [<EntryPoint>]
 let main argv = 
