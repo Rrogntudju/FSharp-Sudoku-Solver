@@ -1,5 +1,4 @@
 ﻿// A translation of Peter Norvig’s Sudoku solver from Python to F#     http://www.norvig.com/sudoku.html
-open System.Collections.Generic
 open System.IO
 
 let inline isIn (l : 'a list) (i : 'a) = List.exists ((=) i) l   // exists is ~10X faster than contains
